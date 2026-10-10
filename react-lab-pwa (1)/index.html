@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laboratorio de React</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2f6fed">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--tx:#1d2333;--mut:#6b7285;--ac:#2f6fed;--bd:#e3e6ef;--code:#eef1f8;--ok:#1e9e5a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12141c;--card:#1b1e29;--tx:#e8eaf2;--mut:#9aa1b5;--ac:#6b9bff;--bd:#2a2e3d;--code:#232736;--ok:#4cc388}}
+:root[data-theme="dark"]{--bg:#12141c;--card:#1b1e29;--tx:#e8eaf2;--mut:#9aa1b5;--ac:#6b9bff;--bd:#2a2e3d;--code:#232736;--ok:#4cc388}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{overscroll-behavior:none}
+button,.tabs{user-select:none;-webkit-user-select:none}
+button:active{transform:scale(.97)}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+main{max-width:760px;margin:0 auto;padding:18px 16px 40px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+h1{font-size:1.4rem;margin:0}
+.sub{color:var(--mut);margin:4px 0 16px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px}
+.tabs button{white-space:nowrap;background:var(--card);color:var(--tx);border:1px solid var(--bd)}
+.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-top:10px}
+button{cursor:pointer;border:0;border-radius:10px;background:var(--ac);color:#fff;padding:9px 13px;font-size:1rem}
+button.ghost{background:transparent;color:var(--ac);border:1px solid var(--ac)}
+input,select{padding:9px 11px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:1rem;max-width:100%}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.big{font-size:2.4rem;font-weight:700}
+.tag{display:inline-block;background:var(--code);border-radius:6px;padding:1px 7px;font-family:ui-monospace,Menlo,monospace;font-size:.85rem}
+.why{color:var(--mut);font-size:.92rem;margin:12px 0 0;border-top:1px solid var(--bd);padding-top:10px}
+ul{padding-left:18px;margin:8px 0}
+.err{color:#d6455d;font-size:.9rem}.okc{color:var(--ok)}
+.bar{height:10px;background:var(--code);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ac);transition:width .2s}
+</style>
+</head>
+<body>
+<main><div id="root"></div></main>
+
+<script src="vendor/react.production.min.js"></script>
+<script src="vendor/react-dom.production.min.js"></script>
+<script src="vendor/htm.umd.js"></script>
+<script>
+const { useState, useEffect, useRef, useMemo, useContext, createContext } = React;
+const html = htm.bind(React.createElement);
+
+/* ---------- CONTEXTO: dato global sin pasar props nivel por nivel ---------- */
+const TemaCtx = createContext({ tema: 'auto', setTema: () => {} });
+
+/* ---------- HOOK PERSONALIZADO: lógica reutilizable ---------- */
+function useContador(inicial = 0, paso = 1) {
+  const [n, setN] = useState(inicial);
+  return { n, sumar: () => setN((v) => v + paso), restar: () => setN((v) => v - paso), reset: () => setN(inicial) };
+}
+
+/* ---------- 1. ESTADO ---------- */
+function DemoEstado() {
+  const a = useContador(0, 1);
+  const b = useContador(100, 10); // el mismo hook, dos estados independientes
+  return html`<div>
+    <p>Dos contadores usando el <b>mismo hook</b> <span className="tag">useContador</span>:</p>
+    <div className="row"><span className="big">${a.n}</span>
+      <button onClick=${a.restar}>−1</button><button onClick=${a.sumar}>+1</button>
+      <button className="ghost" onClick=${a.reset}>reset</button></div>
+    <div className="row"><span className="big">${b.n}</span>
+      <button onClick=${b.restar}>−10</button><button onClick=${b.sumar}>+10</button>
+      <button className="ghost" onClick=${b.reset}>reset</button></div>
+    <p className="why"><b>Qué demuestra:</b> <span className="tag">useState</span> guarda datos que, al cambiar, redibujan el componente. Un <i>hook personalizado</i> permite reutilizar esa lógica sin copiar código.</p>
+  </div>`;
+}
+
+/* ---------- 2. EFECTOS ---------- */
+function Cronometro() {
+  const [seg, setSeg] = useState(0);
+  const [corre, setCorre] = useState(false);
+  useEffect(() => {
+    if (!corre) return;
+    const id = setInterval(() => setSeg((s) => s + 1), 1000);
+    return () => clearInterval(id); // limpieza al parar o desmontar
+  }, [corre]);
+  return html`<div className="row"><span className="big">${seg}s</span>
+    <button onClick=${() => setCorre(!corre)}>${corre ? 'Pausar' : 'Iniciar'}</button>
+    <button className="ghost" onClick=${() => { setCorre(false); setSeg(0); }}>Reiniciar</button></div>`;
+}
+function DemoEfectos() {
+  const [visible, setVisible] = useState(true);
+  const [ancho, setAncho] = useState(window.innerWidth);
+  useEffect(() => {
+    const f = () => setAncho(window.innerWidth);
+    window.addEventListener('resize', f);
+    return () => window.removeEventListener('resize', f);
+  }, []);
+  useEffect(() => { document.title = visible ? 'Laboratorio de React ⏱' : 'Laboratorio de React'; }, [visible]);
+  return html`<div>
+    <div className="row"><button className="ghost" onClick=${() => setVisible(!visible)}>${visible ? 'Desmontar' : 'Montar'} cronómetro</button></div>
+    ${visible && html`<${Cronometro} />`}
+    <p>Ancho de ventana (se actualiza solo): <b>${ancho}px</b></p>
+    <p className="why"><b>Qué demuestra:</b> <span className="tag">useEffect</span> ejecuta "efectos secundarios" (temporizadores, eventos, título de la pestaña). La función que devuelves limpia el efecto: prueba desmontar el cronómetro. También muestra <b>renderizado condicional</b> (<span className="tag">visible && ...</span>).</p>
+  </div>`;
+}
+
+/* ---------- 3. LISTA FILTRABLE ---------- */
+const FRUTAS = [['Manzana','🍎','Templado'],['Banano','🍌','Tropical'],['Mango','🥭','Tropical'],['Pera','🍐','Templado'],['Piña','🍍','Tropical'],['Cereza','🍒','Templado'],['Uva','🍇','Templado'],['Papaya','🥭','Tropical'],['Fresa','🍓','Templado'],['Coco','🥥','Tropical']];
+function DemoLista() {
+  const [q, setQ] = useState('');
+  const [clima, setClima] = useState('Todos');
+  const [asc, setAsc] = useState(true);
+  const lista = useMemo(() => {
+    const r = FRUTAS.filter(([n,,c]) => n.toLowerCase().includes(q.toLowerCase()) && (clima === 'Todos' || c === clima));
+    return r.sort((a, b) => (asc ? 1 : -1) * a[0].localeCompare(b[0]));
+  }, [q, clima, asc]); // solo se recalcula si cambian estos valores
+  return html`<div>
+    <div className="row">
+      <input placeholder="Buscar fruta..." value=${q} onInput=${(e) => setQ(e.target.value)} />
+      <select value=${clima} onChange=${(e) => setClima(e.target.value)}>
+        <option>Todos</option><option>Tropical</option><option>Templado</option></select>
+      <button className="ghost" onClick=${() => setAsc(!asc)}>${asc ? 'A→Z' : 'Z→A'}</button>
+    </div>
+    ${lista.length === 0 ? html`<p className="err">Sin resultados</p>` : html`<ul>${lista.map(([n, e, c]) => html`<li key=${n}>${e} ${n} <span className="tag">${c}</span></li>`)}</ul>`}
+    <p className="why"><b>Qué demuestra:</b> la lista se <i>deriva</i> del estado (búsqueda, filtro, orden) con <span className="tag">.filter</span>/<span className="tag">.map</span>. <span className="tag">useMemo</span> evita recalcular si nada cambió. Nunca tocas el HTML: solo cambias datos.</p>
+  </div>`;
+}
+
+/* ---------- 4. FORMULARIO CONTROLADO ---------- */
+function DemoFormulario() {
+  const [f, setF] = useState({ nombre: '', correo: '', clave: '' });
+  const [enviado, setEnviado] = useState(false);
+  const refNombre = useRef(null);
+  const set = (k) => (e) => { setEnviado(false); setF({ ...f, [k]: e.target.value }); };
+  const errores = {
+    nombre: f.nombre.trim().length < 2 ? 'Mínimo 2 letras' : '',
+    correo: /^\S+@\S+\.\S+$/.test(f.correo) ? '' : 'Correo no válido',
+    clave: f.clave.length < 6 ? 'Mínimo 6 caracteres' : '',
+  };
+  const valido = !errores.nombre && !errores.correo && !errores.clave;
+  const fuerza = Math.min(100, f.clave.length * 12);
+  return html`<div>
+    <div className="row"><input ref=${refNombre} placeholder="Nombre" value=${f.nombre} onInput=${set('nombre')} />
+      <span className="err">${f.nombre && errores.nombre}</span></div>
+    <div className="row"><input placeholder="Correo" value=${f.correo} onInput=${set('correo')} />
+      <span className="err">${f.correo && errores.correo}</span></div>
+    <div className="row"><input type="password" placeholder="Contraseña" value=${f.clave} onInput=${set('clave')} />
+      <span className="err">${f.clave && errores.clave}</span></div>
+    <div className="bar"><i style=${{ width: fuerza + '%' }}></i></div>
+    <div className="row">
+      <button disabled=${!valido} style=${{ opacity: valido ? 1 : .45 }} onClick=${() => setEnviado(true)}>Enviar</button>
+      <button className="ghost" onClick=${() => refNombre.current.focus()}>Enfocar nombre</button>
+    </div>
+    ${enviado && html`<p className="okc">✓ ¡Hola ${f.nombre}! Formulario válido.</p>`}
+    <p className="why"><b>Qué demuestra:</b> <i>inputs controlados</i> (el valor vive en el estado), validación en vivo calculada a partir de él, estilos dinámicos (<span className="tag">style=\{{...}}</span>) y <span className="tag">useRef</span> para acceder a un elemento real del DOM (botón "Enfocar").</p>
+  </div>`;
+}
+
+/* ---------- 5. CONTEXTO / TEMA ---------- */
+function Selector() {
+  const { tema, setTema } = useContext(TemaCtx); // lo lee directo, sin props
+  return html`<div className="row">${['auto', 'light', 'dark'].map((t) =>
+    html`<button key=${t} className=${tema === t ? '' : 'ghost'} onClick=${() => setTema(t)}>${{ auto: 'Auto', light: 'Claro', dark: 'Oscuro' }[t]}</button>`)}</div>`;
+}
+function DemoContexto() {
+  const { tema } = useContext(TemaCtx);
+  return html`<div>
+    <p>Tema actual: <b>${tema}</b>. Cambia aquí o con el botón 🌓 del encabezado: ambos leen el mismo contexto.</p>
+    <${Selector} />
+    <p className="why"><b>Qué demuestra:</b> <span className="tag">createContext</span> + <span className="tag">useContext</span> comparten datos globales (tema, usuario, idioma) entre componentes lejanos sin pasar props por cada nivel.</p>
+  </div>`;
+}
+
+/* ---------- 6. DIAGNÓSTICO PWA ---------- */
+function DemoPWA() {
+  const [res, setRes] = useState(null);
+  useEffect(() => {
+    (async () => {
+      const out = [];
+      const add = (ok, t, d = '') => out.push({ ok, t, d });
+      add(location.protocol === 'https:' || location.hostname === 'localhost', 'Conexión segura (HTTPS)', location.href);
+      add(window.top === window, 'No está dentro de otra página', navigator.userAgent.slice(0, 90));
+      const link = document.querySelector('link[rel=manifest]');
+      try {
+        const r = await fetch(link.href);
+        const m = await r.json();
+        add(r.ok, 'Manifest cargado', r.status + ' · ' + (r.headers.get('content-type') || 'sin tipo'));
+        add(!!m.name && !!m.start_url && m.display === 'standalone', 'Campos del manifest', 'display=' + m.display + ' · start_url=' + m.start_url);
+        for (const ic of m.icons) {
+          const rr = await fetch(new URL(ic.src, link.href));
+          add(rr.ok, 'Ícono ' + ic.sizes + ' (' + ic.purpose + ')', rr.status + ' · ' + (rr.headers.get('content-type') || ''));
+        }
+      } catch (e) { add(false, 'Manifest', 'No se pudo leer: ' + e.message); }
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        add(!!reg && !!reg.active, 'Service worker activo', reg ? (reg.active ? 'listo' : 'instalando… recarga la página') : 'no registrado (revisa que sw.js exista)');
+      } catch (e) { add(false, 'Service worker', e.message); }
+      add(window.matchMedia('(display-mode: standalone)').matches, 'Abierta como app instalada', 'Es normal que falle si la abres desde el navegador');
+      setRes(out);
+    })();
+  }, []);
+  return html`<div>
+    <p>Comprobaciones en tu dispositivo. Si algo sale en ❌, dime cuál.</p>
+    ${!res ? html`<p>Comprobando…</p>` : html`<ul style=${{ listStyle: 'none', paddingLeft: 0 }}>${res.map((x) => html`<li key=${x.t} style=${{ marginBottom: '10px' }}>${x.ok ? '✅' : '❌'} <b>${x.t}</b><br /><small style=${{ color: 'var(--mut)', wordBreak: 'break-all' }}>${x.d}</small></li>`)}</ul>`}
+    <p className="why"><b>Qué demuestra:</b> una <i>PWA</i> exige HTTPS, un manifest válido con íconos de 192 y 512 px, y un service worker activo.</p>
+  </div>`;
+}
+
+/* ---------- APP: compone todo ---------- */
+const SECCIONES = [['Estado', DemoEstado], ['Efectos', DemoEfectos], ['Lista', DemoLista], ['Formulario', DemoFormulario], ['Contexto', DemoContexto], ['PWA', DemoPWA]];
+/* ---------- ENRUTADOR: la URL (#/lista) decide la vista ---------- */
+function useRuta() {
+  const leer = () => Math.max(0, SECCIONES.findIndex(([n]) => '#/' + n.toLowerCase() === location.hash));
+  const [i, setI] = useState(leer);
+  useEffect(() => {
+    const f = () => setI(leer());
+    window.addEventListener('hashchange', f);
+    return () => window.removeEventListener('hashchange', f);
+  }, []);
+  return [i, (k) => { location.hash = '/' + SECCIONES[k][0].toLowerCase(); }];
+}
+function Contenido() {
+  const [i, setI] = useRuta();
+  const { tema, setTema } = useContext(TemaCtx);
+  const [inst, setInst] = useState(null); // evento de instalación PWA
+  useEffect(() => {
+    const f = (e) => { e.preventDefault(); setInst(e); };
+    window.addEventListener('beforeinstallprompt', f);
+    return () => window.removeEventListener('beforeinstallprompt', f);
+  }, []);
+  const Actual = SECCIONES[i][1];
+  return html`<div>
+    <header><h1>⚛️ Laboratorio de React</h1>
+      ${inst && html`<button onClick=${() => { inst.prompt(); setInst(null); }}>Instalar</button>`}
+      <button className="ghost" aria-label="Cambiar tema" onClick=${() => setTema(tema === 'dark' ? 'light' : 'dark')}>🌓</button></header>
+    <p className="sub">Cada pestaña es un componente que muestra una función clave de React.</p>
+    <div className="tabs">${SECCIONES.map(([n], k) => html`<button key=${n} className=${k === i ? 'on' : ''} onClick=${() => setI(k)}>${k + 1}. ${n}</button>`)}</div>
+    <div className="card"><${Actual} /></div>
+  </div>`;
+}
+function App() {
+  const [tema, setTema] = useState('auto');
+  useEffect(() => {
+    const r = document.documentElement;
+    tema === 'auto' ? r.removeAttribute('data-theme') : r.setAttribute('data-theme', tema);
+  }, [tema]);
+  return html`<${TemaCtx.Provider} value=${{ tema, setTema }}><${Contenido} /></${TemaCtx.Provider}>`;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App} />`);
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(console.error));
+}
+</script>
+</body>
+</html>
